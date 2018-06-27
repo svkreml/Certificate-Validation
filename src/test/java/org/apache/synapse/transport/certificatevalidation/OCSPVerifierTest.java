@@ -19,6 +19,7 @@
 package org.apache.synapse.transport.certificatevalidation;
 
 import junit.framework.TestCase;
+import org.apache.log4j.PropertyConfigurator;
 import org.apache.synapse.transport.certificatevalidation.ocsp.OCSPCache;
 import org.apache.synapse.transport.certificatevalidation.ocsp.OCSPVerifier;
 import org.bouncycastle.asn1.ASN1Encodable;
@@ -91,16 +92,24 @@ public class OCSPVerifierTest extends TestCase {
     }
 
     public void testOCSPVerifie2() throws Exception{
-
+        PropertyConfigurator.configure("log4j.properties");
         //Add BouncyCastle as Security Provider.
         Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 
         Utils utils = new Utils();
 
 
-        X509Certificate userCert = getCertFromFile("TestForOCSP.cer");
-        //X509Certificate userCert = getCertFromFile("ucTestCryptoPro.der");
-        X509Certificate caCert = getCertFromFile("subUcTestCryptoPro.der");
+        //X509Certificate userCert = getCertFromFile("TestForOCSP.cer");
+        X509Certificate userCert = getCertFromFile("certnew (1).cer");
+        // X509Certificate userCert = getCertFromFile("ucTestCryptoPro.der");
+
+
+
+
+
+        //X509Certificate caCert = getCertFromFile("subUcTestCryptoPro.der");
+        X509Certificate caCert = getCertFromFile("testCA.cer");
+
 
 
         OCSPCache cache = OCSPCache.getCache();
@@ -122,9 +131,16 @@ public class OCSPVerifierTest extends TestCase {
         Utils utils = new Utils();
 
 
-        X509Certificate userCert = getCertFromFile("TestForOCSP.cer");
+        //X509Certificate userCert = getCertFromFile("TestForOCSP.cer");
+        X509Certificate userCert = getCertFromFile("certnew.cer");
        // X509Certificate userCert = getCertFromFile("ucTestCryptoPro.der");
-        X509Certificate caCert = getCertFromFile("subUcTestCryptoPro.der");
+
+
+
+
+
+        //X509Certificate caCert = getCertFromFile("subUcTestCryptoPro.der");
+        X509Certificate caCert = getCertFromFile("testCA.cer");
 
 
 

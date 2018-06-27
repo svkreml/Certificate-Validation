@@ -86,6 +86,8 @@ public class OCSPVerifier implements RevocationVerifier {
 
                 BasicOCSPResp basicResponse = (BasicOCSPResp) ocspResponse.getResponseObject();
                 responses = (basicResponse == null) ? null : basicResponse.getResponses();
+                log.info("OSCP url: "+serviceUrl);
+
                 //todo use the super exception
             } catch (Exception e) {
                 continue;
