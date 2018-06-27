@@ -99,7 +99,35 @@ public class OCSPVerifierTest extends TestCase {
 
 
         X509Certificate userCert = getCertFromFile("TestForOCSP.cer");
+        //X509Certificate userCert = getCertFromFile("ucTestCryptoPro.der");
         X509Certificate caCert = getCertFromFile("subUcTestCryptoPro.der");
+
+
+        OCSPCache cache = OCSPCache.getCache();
+        cache.init(5,5);
+        OCSPVerifier ocspVerifier= new OCSPVerifier(cache);
+        RevocationStatus status = ocspVerifier.checkRevocationStatus(userCert, caCert);
+
+        //the cache will have the SingleResponse derived from the OCSP response and it will be checked to see if the
+        //fake certificate is revoked. So the status should be REVOKED.
+
+
+        System.out.println(status);
+    }
+
+    public void testOCSPVerifie3() throws Exception{
+        //Add BouncyCastle as Security Provider.
+        Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+
+        Utils utils = new Utils();
+
+
+        X509Certificate userCert = getCertFromFile("TestForOCSP.cer");
+       // X509Certificate userCert = getCertFromFile("ucTestCryptoPro.der");
+        X509Certificate caCert = getCertFromFile("subUcTestCryptoPro.der");
+
+
+
 
         //Create OCSP request to check if certificate with "serialNumber == revokedSerialNumber" is revoked.
         OCSPReq request = getOCSPRequest(caCert,userCert.getSerialNumber());
@@ -131,23 +159,16 @@ public class OCSPVerifierTest extends TestCase {
         final BasicOCSPResp basicResponse = (BasicOCSPResp) ocspResponse
                 .getResponseObject();
 
-
-
-        SingleResp singleResp = ((BasicOCSPResp)basicResponse).getResponses()[0];
-
-        OCSPCache cache = OCSPCache.getCache();
-        cache.init(5,5);
-        cache.setCacheValue(userCert.getSerialNumber(), singleResp, request, null);
-
-        OCSPVerifier ocspVerifier= new OCSPVerifier(cache);
-        RevocationStatus status = ocspVerifier.checkRevocationStatus(userCert, caCert);
-
-        //the cache will have the SingleResponse derived from the OCSP response and it will be checked to see if the
-        //fake certificate is revoked. So the status should be REVOKED.
-
-
-
-        assertTrue(status == RevocationStatus.GOOD);
+        SingleResp singleResp = basicResponse.getResponses()[0];
+        Object status = singleResp.getCertStatus();
+        if(status==null)
+            System.out.println("GOOD");
+        else if(status instanceof UnknownStatus)
+            System.out.println("UnknownStatus");
+        else if(status instanceof  RevokedStatus) {
+            System.out.println(((RevokedStatus) status).getRevocationTime());
+            System.out.println(((RevokedStatus) status).getRevocationReason());
+        }
     }
 
 
