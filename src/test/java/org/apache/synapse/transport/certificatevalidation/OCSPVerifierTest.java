@@ -21,17 +21,24 @@ package org.apache.synapse.transport.certificatevalidation;
 import junit.framework.TestCase;
 import org.apache.synapse.transport.certificatevalidation.ocsp.OCSPCache;
 import org.apache.synapse.transport.certificatevalidation.ocsp.OCSPVerifier;
+import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.DERTaggedObject;
 import org.bouncycastle.asn1.ocsp.OCSPObjectIdentifiers;
 import org.bouncycastle.asn1.x509.CRLReason;
 import org.bouncycastle.asn1.x509.X509Extension;
 import org.bouncycastle.asn1.x509.X509Extensions;
 import org.bouncycastle.ocsp.*;
 import org.bouncycastle.x509.X509V3CertificateGenerator;
+import org.bouncycastle.x509.extension.X509ExtensionUtil;
 
+import java.io.*;
 import java.lang.reflect.Method;
 import java.math.BigInteger;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.security.*;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Date;
 import java.util.Vector;
@@ -82,6 +89,67 @@ public class OCSPVerifierTest extends TestCase {
         //fake certificate is revoked. So the status should be REVOKED.
         assertTrue(status == RevocationStatus.REVOKED);
     }
+
+    public void testOCSPVerifie2() throws Exception{
+
+        //Add BouncyCastle as Security Provider.
+        Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+
+        Utils utils = new Utils();
+
+
+        X509Certificate userCert = getCertFromFile("TestForOCSP.cer");
+        X509Certificate caCert = getCertFromFile("subUcTestCryptoPro.der");
+
+        //Create OCSP request to check if certificate with "serialNumber == revokedSerialNumber" is revoked.
+        OCSPReq request = getOCSPRequest(caCert,userCert.getSerialNumber());
+
+
+
+        final byte[] array = request.getEncoded();
+
+        HttpURLConnection con = null;
+        final URL url = new URL((String) "http://testca2012.cryptopro.ru/ocsp/ocsp.srf");
+        con = (HttpURLConnection) url.openConnection();
+        con.setRequestProperty("Content-Type", "application/ocsp-request");
+        con.setRequestProperty("Accept", "application/ocsp-response");
+        con.setDoOutput(true);
+        final OutputStream out = con.getOutputStream();
+        final DataOutputStream dataOut = new DataOutputStream(
+                new BufferedOutputStream(out));
+        dataOut.write(array);
+
+        dataOut.flush();
+        dataOut.close();
+
+        // Get Response
+        final InputStream in = (InputStream) con.getContent();
+
+
+        // Fetch the responses
+        final OCSPResp ocspResponse = new OCSPResp(in);
+        final BasicOCSPResp basicResponse = (BasicOCSPResp) ocspResponse
+                .getResponseObject();
+
+
+
+        SingleResp singleResp = ((BasicOCSPResp)basicResponse).getResponses()[0];
+
+        OCSPCache cache = OCSPCache.getCache();
+        cache.init(5,5);
+        cache.setCacheValue(userCert.getSerialNumber(), singleResp, request, null);
+
+        OCSPVerifier ocspVerifier= new OCSPVerifier(cache);
+        RevocationStatus status = ocspVerifier.checkRevocationStatus(userCert, caCert);
+
+        //the cache will have the SingleResponse derived from the OCSP response and it will be checked to see if the
+        //fake certificate is revoked. So the status should be REVOKED.
+
+
+
+        assertTrue(status == RevocationStatus.GOOD);
+    }
+
 
     /**
      * An OCSP request is made to be given to the fake CA. Reflection is used to call generateOCSPRequest(..) private
@@ -167,5 +235,25 @@ public class OCSPVerifierTest extends TestCase {
         Utils utils = new Utils();
         X509V3CertificateGenerator certGen = utils.getUsableCertificateGenerator(caCert,entityKey, serialNumber);
         return certGen.generateX509Certificate(caKey, "BC");
+    }
+
+    private static X509Certificate getCertFromFile(String path) {
+        X509Certificate cert = null;
+        try {
+
+            File certFile = new File(path);
+            if (!certFile.canRead())
+                throw new IOException(" File " + certFile.toString() +
+                        " is unreadable");
+
+            FileInputStream fis = new FileInputStream(path);
+            CertificateFactory cf = CertificateFactory.getInstance("X509");
+            cert = (X509Certificate)cf.generateCertificate(fis);
+
+        } catch(Exception e) {
+            System.out.println("Can't construct X509 Certificate. " +
+                    e.getMessage());
+        }
+        return cert;
     }
 }
